@@ -184,6 +184,37 @@ def register2MNI(fslDir, inFile, outFile, affmat, warp):
 			'--premat=' + affmat,
 			'--interp=trilinear']))
 
+def antsregister2MNI(fslDir, inFile, outFile, func2anat, affmat, warp):
+	""" This function registers an image (or time-series of images) to MNI152 T1 2mm. If no affmat is defined, it only warps (i.e. it assumes that the data has been registerd to the structural scan associated with the warp-file already). If no warp is defined either, it only resamples the data to 2mm isotropic if needed (i.e. it assumes that the data has been registered to a MNI152 template). In case only an affmat file is defined, it assumes that the data has to be linearly registered to MNI152 (i.e. the user has a reason not to use non-linear registration on the data).
+
+	Parameters
+	---------------------------------------------------------------------------------
+	fslDir:		Full path of the bin-directory of FSL
+	inFile:		Full path to the data file (nii.gz) which has to be registerd to MNI152 T1 2mm
+	outFile:	Full path of the output file
+	affmat:		Full path of the mat file describing the linear registration (if data is still in native space)
+	warp:		Full path of the warp file describing the non-linear registration (if data has not been registered to MNI152 space yet)
+
+	Output (within the requested output directory)
+	---------------------------------------------------------------------------------
+	melodic_IC_mm_MNI2mm.nii.gz	merged file containing the mixture modeling thresholded Z-statistical maps registered to MNI152 2mm """
+
+
+	# Import needed modules
+	import os
+	import commands
+
+	# Define the MNI152 T1 2mm template
+	fslnobin = fslDir.rsplit('/',2)[0] 
+	ref = os.path.join(fslnobin,'data','standard','MNI152_T1_2mm_brain.nii.gz')
+
+        # assuming have:
+        # 1) functional to anatomical space affine
+        # 2) anatomical to MNI affine
+        # 3) anatomical to MNI warp
+	os.system(' '.join(['WarpTimeSeriesImageMultiTransform 4', inFile,
+                            outFile, '-R ' + ref, warp, affmat, func2anat]))
+
 
 def feature_time_series(melmix, mc):
 	""" This function extracts the maximum RP correlation feature scores. It determines the maximum robust correlation of each component time-series with a model of 72 realigment parameters.
@@ -376,13 +407,13 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 		# Get sum of Z-values of the voxels located within the CSF (calculate via the mean and number of non-zero voxels)
 		csfVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
-							'-k mask_csf.nii.gz',
+							'-k ' + os.path.join(aromaDir, 'mask_csf.nii.gz'),
 							'-V | awk \'{print $1}\''])))
 
 		if not (csfVox == 0):
 			csfMean = float(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
-							'-k mask_csf.nii.gz',
+                                                        '-k ' + os.path.join(aromaDir, 'mask_csf.nii.gz'),
 							'-M'])))
 		else:
 			csfMean = 0
@@ -392,12 +423,12 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 		# Get sum of Z-values of the voxels located within the Edge (calculate via the mean and number of non-zero voxels)
 		edgeVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
-							'-k mask_edge.nii.gz',
+                                                        '-k ' + os.path.join(aromaDir, 'mask_edge.nii.gz'),
 							'-V | awk \'{print $1}\''])))
 		if not (edgeVox == 0):
 			edgeMean = float(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
-							'-k mask_edge.nii.gz',
+                                                        '-k ' + os.path.join(aromaDir, 'mask_edge.nii.gz'),
 							'-M'])))
 		else:
 			edgeMean = 0
@@ -407,12 +438,12 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 		# Get sum of Z-values of the voxels located outside the brain (calculate via the mean and number of non-zero voxels)
 		outVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
-							'-k mask_out.nii.gz',
+                                                        '-k ' + os.path.join(aromaDir, 'mask_edge.nii.gz'),
 							'-V | awk \'{print $1}\''])))
 		if not (outVox == 0):
 			outMean = float(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
-							'-k mask_out.nii.gz',
+                                                        '-k ' + os.path.join(aromaDir, 'mask_out.nii.gz'),
 							'-M'])))
 		else:
 			outMean = 0

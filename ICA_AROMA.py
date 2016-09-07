@@ -10,7 +10,7 @@ import shutil
 # Change to script directory
 cwd = os.path.realpath(os.path.curdir)
 scriptDir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(scriptDir)
+#os.chdir(scriptDir)
 
 #-------------------------------------------- PARSER --------------------------------------------#
 
@@ -25,6 +25,7 @@ nonfeatoptions = parser.add_argument_group('Required arguments - generic mode')
 nonfeatoptions.add_argument('-i', '-in',dest="inFile", required=False, help='Input file name of fMRI data (.nii.gz)')
 nonfeatoptions.add_argument('-mc', dest="mc", required=False, help='File name of the warp-file describing the non-linear registration (e.g., FSL FNIRT) of the structural data to MNI152 space (.nii.gz). (e.g., /home/user/PROJECT/SUBJECT.feat/mc/prefiltered_func_data_mcf.par')
 nonfeatoptions.add_argument('-a','-affmat', dest="affmat", default="", help='File name of the mat-file describing the affine registration (e.g., FSL FLIRT) of the functional data to structural space (.mat file). (e.g., /home/user/PROJECT/SUBJECT.feat/reg/example_func2highres.mat')
+nonfeatoptions.add_argument('-b','-func2anat', dest="func2anat", default="", help='File name of the mat-file placing functional data in structural space; used only for ANTS.')
 nonfeatoptions.add_argument('-w','-warp', dest="warp", default="", help='File name of the warp-file describing the non-linear registration (e.g., FSL FNIRT) of the structural data to MNI152 space (.nii.gz). (e.g., /home/user/PROJECT/SUBJECT.feat/reg/highres2standard_warp.nii.gz')
 nonfeatoptions.add_argument('-m','-mask', dest="mask", default="", help='File name of the mask to be used for MELODIC (denoising will be performed on the original/non-masked input data)')
 
@@ -38,6 +39,7 @@ optoptions.add_argument('-tr', dest="TR", help='TR in seconds',type=float)
 optoptions.add_argument('-den', dest="denType", default="nonaggr", help='Type of denoising strategy: \'no\': only classification, no denoising; \'nonaggr\': non-aggresssive denoising (default); \'aggr\': aggressive denoising; \'both\': both aggressive and non-aggressive denoising (seperately)')
 optoptions.add_argument('-md','-meldir', dest="melDir", default="",help='MELODIC directory name, in case MELODIC has been run previously.')
 optoptions.add_argument('-dim', dest="dim", default=0,help='Dimensionality reduction into #num dimensions when running MELODIC (default: automatic estimation; i.e. -dim 0)',type=int)
+optoptions.add_argument('-p', '-package', dest="package", default="fsl", help='Package used for alignment to MNI (fsl or ants)')
 
 print '\n------------------------------- RUNNING ICA-AROMA ------------------------------- '
 print '--------------- \'ICA-based Automatic Removal Of Motion Artifacts\' --------------- \n'
@@ -190,7 +192,10 @@ print 'Step 2) Automatic classification of the components'
 print '  - registering the spatial maps to MNI'
 melIC = os.path.join(outDir,'melodic_IC_thr.nii.gz')
 melIC_MNI =  os.path.join(outDir,'melodic_IC_thr_MNI2mm.nii.gz')
-aromafunc.register2MNI(fslDir, melIC, melIC_MNI, affmat, warp)
+if args.package == 'fsl':
+        aromafunc.register2MNI(fslDir, melIC, melIC_MNI, affmat, warp)
+else:
+        aromafunc.antsregister2MNI(fslDir, melIC, melIC_MNI, args.func2anat, affmat, warp)
 
 print '  - extracting the CSF & Edge fraction features'
 edgeFract, csfFract = aromafunc.feature_spatial(fslDir, outDir, scriptDir, melIC_MNI)
