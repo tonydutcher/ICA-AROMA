@@ -94,7 +94,7 @@ def runICA(fslDir, inFile, outDir, melDirIn, mask, dim, TR):
     # null hypothesis test. In that case, this map will have to be
     # used (first one will be empty).
     for i in range(1,nrICs+1):
-		# Define thresholded zstat-map file
+	# Define thresholded zstat-map file
         zTemp = os.path.join(melDir,'stats','thresh_zstat' + str(i) + '.nii.gz')
         cmd = ' '.join([os.path.join(fslDir,'fslinfo'),
 			            zTemp,
@@ -424,6 +424,7 @@ def mask_sum(fslDir, image, mask_file=None):
     """Calculate sum of voxels within a mask."""
 
     import os
+    import commands
     
     # Get sum of Z-values within the total Z-map (calculate via
     # the mean and number of non-zero voxels)
@@ -496,7 +497,7 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC, gray=None):
         totSum = mask_sum(fslDir, tempIC)
         if totSum == 0:
             print '     - The spatial map of component ' + str(i+1) + ' is empty. Please check!'
-            
+
         # Get sum of Z-values of the voxels located within the CSF,
         # edge, and outside of brain
         csfSum = mask_sum(fslDir, tempIC,
@@ -591,8 +592,8 @@ def classification(outDir, maxRPcorr, edgeFract, HFC, csfFract):
             classif="True"
         else:
             classif="False"
-            txt.write('%.0f\t%s\t\t%.2f\t\t\t%.2f\t\t\t%.2f\t\t\t%.2f\n' % (i+1, classif, maxRPcorr[i], edgeFract[i], HFC[i], csfFract[i]))
-            txt.close()
+        txt.write('%.0f\t%s\t\t%.2f\t\t\t%.2f\t\t\t%.2f\t\t\t%.2f\n' % (i+1, classif, maxRPcorr[i], edgeFract[i], HFC[i], csfFract[i]))
+    txt.close()
 
     return motionICs
 
