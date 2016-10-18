@@ -4,7 +4,7 @@
 import os
 import argparse
 import commands
-import ICA_AROMA_functions as aromafunc
+import aromafunc
 import shutil
 
 # Change to script directory
@@ -40,6 +40,7 @@ optoptions.add_argument('-den', dest="denType", default="nonaggr", help='Type of
 optoptions.add_argument('-md','-meldir', dest="melDir", default="",help='MELODIC directory name, in case MELODIC has been run previously.')
 optoptions.add_argument('-dim', dest="dim", default=0,help='Dimensionality reduction into #num dimensions when running MELODIC (default: automatic estimation; i.e. -dim 0)',type=int)
 optoptions.add_argument('-p', '-package', dest="package", default="fsl", help='Package used for alignment to MNI (fsl or ants)')
+optoptions.add_argument('-g', '-gray', dest="gray", default=None, help="Path to gray matter mask")
 
 print '\n------------------------------- RUNNING ICA-AROMA ------------------------------- '
 print '--------------- \'ICA-based Automatic Removal Of Motion Artifacts\' --------------- \n'
@@ -192,14 +193,22 @@ print 'Step 2) Automatic classification of the components'
 print '  - registering the spatial maps to MNI'
 melIC = os.path.join(outDir,'melodic_IC_thr.nii.gz')
 melIC_MNI =  os.path.join(outDir,'melodic_IC_thr_MNI2mm.nii.gz')
+gray_MNI = os.path.join(outDir,'gray_MNI2mm.nii.gz')
 if args.package == 'fsl':
         aromafunc.register2MNI(fslDir, melIC, melIC_MNI, affmat, warp)
+        if args.gray is not None:
+                aromafunc.register2MNI(fslDir, args.gray, gray_MNI, affmat, warp)
 else:
         aromafunc.antsregister2MNI(fslDir, melIC, melIC_MNI, args.func2anat, affmat, warp)
+        if args.gray is not None:
+                aromafunc.antsregister2MNI(fslDir, args.gray, gray_MNI, args.func2anat, affmat, warp, nn=True)
 
 print '  - extracting the CSF & Edge fraction features'
-edgeFract, csfFract = aromafunc.feature_spatial(fslDir, outDir, scriptDir, melIC_MNI)
-
+if args.gray is not None:
+        edgeFract, csfFract = aromafunc.feature_spatial(fslDir, outDir, scriptDir, melIC_MNI, gray=gray_MNI)
+else:
+        edgeFract, csfFract = aromafunc.feature_spatial(fslDir, outDir, scriptDir, melIC_MNI)
+        
 print '  - extracting the Maximum RP correlation feature'
 melmix = os.path.join(outDir,'melodic.ica','melodic_mix')
 maxRPcorr = aromafunc.feature_time_series(melmix, mc)
