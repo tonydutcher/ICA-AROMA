@@ -473,17 +473,19 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 			tempIC,
 			'-abs',
 			tempIC]))
-		
+
+        statsDir = os.path.join(fslDir, 'fslstats')
+        mask_csf = os.path.join(aromaDir, 'mask_csf.nii.gz')
+        mask_edge = os.path.join(aromaDir, 'mask_edge.nii.gz')
+        
 		# Get sum of Z-values within the total Z-map (calculate via
 		# the mean and number of non-zero voxels)
-		totVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
-							tempIC,
-							'-V | awk \'{print $1}\''])))
+		totVox = int(commands.getoutput(' '.join([statsDir,
+            tempIC, '-V | awk \'{print $1}\''])))
 		
 		if not (totVox == 0):
-			totMean = float(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
-							tempIC,
-							'-M'])))
+			totMean = float(commands.getoutput(' '.join([statsDir,
+		        tempIC, '-M'])))
 		else:
 			print '     - The spatial map of component ' + str(i+1) + ' is empty. Please check!'
 			totMean = 0
@@ -492,16 +494,12 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 		
 		# Get sum of Z-values of the voxels located within the CSF
 		# (calculate via the mean and number of non-zero voxels)
-		csfVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
-							tempIC,
-							'-k ' + os.path.join(aromaDir, 'mask_csf.nii.gz'),
-							'-V | awk \'{print $1}\''])))
+		csfVox = int(commands.getoutput(' '.join([statsDir,
+		    tempIC, '-k ' + mask_csf, '-V | awk \'{print $1}\''])))
 
 		if not (csfVox == 0):
-			csfMean = float(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
-							tempIC,
-                                                        '-k ' + os.path.join(aromaDir, 'mask_csf.nii.gz'),
-							'-M'])))
+			csfMean = float(commands.getoutput(' '.join([statsDir,
+		        tempIC, '-k ' + mask_csf, '-M'])))
 		else:
 			csfMean = 0
 
@@ -509,15 +507,11 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 
 		# Get sum of Z-values of the voxels located within the Edge
 		# (calculate via the mean and number of non-zero voxels)
-		edgeVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
-							tempIC,
-                                                        '-k ' + os.path.join(aromaDir, 'mask_edge.nii.gz'),
-							'-V | awk \'{print $1}\''])))
+		edgeVox = int(commands.getoutput(' '.join([statsDir,
+		    tempIC, '-k ' + mask_edge, '-V | awk \'{print $1}\''])))
 		if not (edgeVox == 0):
-			edgeMean = float(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
-							tempIC,
-                                                        '-k ' + os.path.join(aromaDir, 'mask_edge.nii.gz'),
-							'-M'])))
+			edgeMean = float(commands.getoutput(' '.join([statsDir,
+                tempIC, '-k ' + mask_edge, '-M'])))
 		else:
 			edgeMean = 0
 		
@@ -525,15 +519,12 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 
 		# Get sum of Z-values of the voxels located outside the brain
 		# (calculate via the mean and number of non-zero voxels)
-		outVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
-							tempIC,
-                                                        '-k ' + os.path.join(aromaDir, 'mask_edge.nii.gz'),
-							'-V | awk \'{print $1}\''])))
+		outVox = int(commands.getoutput(' '.join([statsDir,
+			tempIC, '-k ' + mask_edge, '-V | awk \'{print $1}\''])))
 		if not (outVox == 0):
-			outMean = float(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
-							tempIC,
-                                                        '-k ' + os.path.join(aromaDir, 'mask_out.nii.gz'),
-							'-M'])))
+			outMean = float(commands.getoutput(' '.join([statsDir,
+		        tempIC, '-k ' + os.path.join(aromaDir, 'mask_out.nii.gz'),
+				'-M'])))
 		else:
 			outMean = 0
 		
