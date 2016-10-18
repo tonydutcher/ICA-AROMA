@@ -3,22 +3,26 @@
 # Functions for ICA-AROMA v0.3 beta
 
 def runICA(fslDir, inFile, outDir, melDirIn, mask, dim, TR):
-	""" This function runs MELODIC and merges the mixture modeled thresholded ICs into a single 4D nifti file
+    """Run MELODIC and merge ICs into a single 4D nifti file
 
 	Parameters
 	---------------------------------------------------------------------------------
 	fslDir:		Full path of the bin-directory of FSL
 	inFile:		Full path to the fMRI data file (nii.gz) on which MELODIC should be run
 	outDir:		Full path of the output directory
-	melDirIn:	Full path of the MELODIC directory in case it has been run before, otherwise define empty string
+	melDirIn:	Full path of the MELODIC directory in case it has been run before, 
+                otherwise define empty string
 	mask:		Full path of the mask to be applied during MELODIC
 	dim:		Dimensionality of ICA
 	TR:		TR (in seconds) of the fMRI data
 	
 	Output (within the requested output directory)
 	---------------------------------------------------------------------------------
-	melodic.ica		MELODIC directory
-	melodic_IC_thr.nii.gz	merged file containing the mixture modeling thresholded Z-statistical maps located in melodic.ica/stats/ """
+	melodic.ica		        MELODIC directory
+	melodic_IC_thr.nii.gz	merged file containing the mixture modeling thresholded
+                            Z-statistical maps located in melodic.ica/stats/
+
+    """
 
 	# Import needed modules
 	import os
@@ -30,18 +34,26 @@ def runICA(fslDir, inFile, outDir, melDirIn, mask, dim, TR):
 	melICmix = os.path.join(melDir,'melodic_mix')
 	melICthr = os.path.join(outDir,'melodic_IC_thr.nii.gz')
 
-	# When a MELODIC directory is specified, check wheter all needed files are present. Otherwise... run MELODIC again
-	if (len(melDir) != 0) and os.path.isfile(os.path.join(melDirIn,'melodic_IC.nii.gz')) and os.path.isfile(os.path.join(melDirIn,'melodic_FTmix')) and os.path.isfile(os.path.join(melDirIn,'melodic_mix')):
+	# When a MELODIC directory is specified, check wheter all needed
+	# files are present. Otherwise... run MELODIC again
+    if (len(melDir) != 0) and
+    os.path.isfile(os.path.join(melDirIn,'melodic_IC.nii.gz')) and
+    os.path.isfile(os.path.join(melDirIn,'melodic_FTmix')) and
+    os.path.isfile(os.path.join(melDirIn,'melodic_mix')):
 
 		print '  - The existing/specified MELODIC directory will be used.'
 
-		# If a 'stats' directory is present (contains thresholded spatial maps) create a symbolic link to the MELODIC directory. Otherwise create specific links and run mixture modeling to obtain thresholded maps.
+		# If a 'stats' directory is present (contains thresholded
+		# spatial maps) create a symbolic link to the MELODIC
+		# directory. Otherwise create specific links and run mixture
+		# modeling to obtain thresholded maps.
 		if os.path.isdir(os.path.join(melDirIn,'stats')):
 			os.symlink(melDirIn,melDir)
 		else:
 			print '  - The MELODIC directory does not contain the required \'stats\' folder. Mixture modeling on the Z-statistical maps will be run.'
 			
-			# Create symbolic links to the items in the specified melodic directory
+			# Create symbolic links to the items in the specified
+			# melodic directory
 			os.makedirs(melDir)
 			for item in os.listdir(melDirIn):
 				os.symlink(os.path.join(melDirIn,item),os.path.join(melDir,item))
@@ -55,7 +67,9 @@ def runICA(fslDir, inFile, outDir, melDirIn, mask, dim, TR):
 				'--Ostats --mmthresh=0.5']))
 			
 	else:
-		# If a melodic directory was specified, display that it did not contain all files needed for ICA-AROMA (or that the directory does not exist at all)
+		# If a melodic directory was specified, display that it did
+		# not contain all files needed for ICA-AROMA (or that the
+		# directory does not exist at all)
 		if len(melDirIn) != 0 :
 			if not os.path.isdir(melDirIn):
 				print '  - The specified MELODIC directory does not exist. MELODIC will be run seperately.'
@@ -77,7 +91,11 @@ def runICA(fslDir, inFile, outDir, melDirIn, mask, dim, TR):
 		'| grep dim4 | head -n1 | awk \'{print $2}\''])
 	nrICs=int(float(commands.getoutput(cmd)))
 
-	# Merge mixture modeled thresholded spatial maps. Note! In case that mixture modeling did not converge, the file will contain two spatial maps. The latter being the results from a simple null hypothesis test. In that case, this map will have to be used (first one will be empty).
+	# Merge mixture modeled thresholded spatial maps. Note! In case
+	# that mixture modeling did not converge, the file will contain
+	# two spatial maps. The latter being the results from a simple
+	# null hypothesis test. In that case, this map will have to be
+	# used (first one will be empty).
 	for i in range(1,nrICs+1):
 		# Define thresholded zstat-map file
 		zTemp = os.path.join(melDir,'stats','thresh_zstat' + str(i) + '.nii.gz')
@@ -100,7 +118,8 @@ def runICA(fslDir, inFile, outDir, melDirIn, mask, dim, TR):
 			str(lenIC-1),	# first frame
 			'1']))		# number of frames
 
-	# Merge and subsequently remove all mixture modeled Z-maps within the output directory
+	# Merge and subsequently remove all mixture modeled Z-maps within
+	# the output directory
 	os.system(' '.join([os.path.join(fslDir,'fslmerge'),
 		'-t',						# concatenate in time
 		melICthr,					# output
@@ -108,27 +127,43 @@ def runICA(fslDir, inFile, outDir, melDirIn, mask, dim, TR):
 
 	os.system('rm ' + os.path.join(outDir,'thr_zstat????.nii.gz'))
 
-	# Apply the mask to the merged file (in case a melodic-directory was predefined and run with a different mask)
+	# Apply the mask to the merged file (in case a melodic-directory
+	# was predefined and run with a different mask)
 	os.system(' '.join([os.path.join(fslDir,'fslmaths'),
 		melICthr,
 		'-mas ' + mask,
 		melICthr]))
 
 def register2MNI(fslDir, inFile, outFile, affmat, warp):
-	""" This function registers an image (or time-series of images) to MNI152 T1 2mm. If no affmat is defined, it only warps (i.e. it assumes that the data has been registerd to the structural scan associated with the warp-file already). If no warp is defined either, it only resamples the data to 2mm isotropic if needed (i.e. it assumes that the data has been registered to a MNI152 template). In case only an affmat file is defined, it assumes that the data has to be linearly registered to MNI152 (i.e. the user has a reason not to use non-linear registration on the data).
+	"""Register an image to MNI space.
+
+    This function registers an image (or time-series of images) to
+    MNI152 T1 2mm. If no affmat is defined, it only warps (i.e. it
+    assumes that the data has been registerd to the structural scan
+    associated with the warp-file already). If no warp is defined
+    either, it only resamples the data to 2mm isotropic if needed
+    (i.e. it assumes that the data has been registered to a MNI152
+    template). In case only an affmat file is defined, it assumes that
+    the data has to be linearly registered to MNI152 (i.e. the user
+    has a reason not to use non-linear registration on the data).
 
 	Parameters
-	---------------------------------------------------------------------------------
+	---------------------------------------------------------------------------
 	fslDir:		Full path of the bin-directory of FSL
-	inFile:		Full path to the data file (nii.gz) which has to be registerd to MNI152 T1 2mm
+	inFile:		Full path to the data file (nii.gz) which has to be
+                registerd to MNI152 T1 2mm
 	outFile:	Full path of the output file
-	affmat:		Full path of the mat file describing the linear registration (if data is still in native space)
-	warp:		Full path of the warp file describing the non-linear registration (if data has not been registered to MNI152 space yet)
+	affmat:		Full path of the mat file describing the linear
+                registration (if data is still in native space)
+	warp:		Full path of the warp file describing the non-linear
+                registration (if data has not been registered to 
+                MNI152 space yet)
 
 	Output (within the requested output directory)
-	---------------------------------------------------------------------------------
-	melodic_IC_mm_MNI2mm.nii.gz	merged file containing the mixture modeling thresholded Z-statistical maps registered to MNI152 2mm """
-
+	---------------------------------------------------------------------------
+	melodic_IC_mm_MNI2mm.nii.gz	 merged file containing the mixture 
+        modeling thresholded Z-statistical maps registered to MNI152 2mm
+    """
 
 	# Import needed modules
 	import os
@@ -138,14 +173,17 @@ def register2MNI(fslDir, inFile, outFile, affmat, warp):
 	fslnobin = fslDir.rsplit('/',2)[0] 
 	ref = os.path.join(fslnobin,'data','standard','MNI152_T1_2mm_brain.nii.gz')
 
-	# If the no affmat- or warp-file has been specified, assume that the data is already in MNI152 space. In that case only check if resampling to 2mm is needed
+	# If the no affmat- or warp-file has been specified, assume that
+	# the data is already in MNI152 space. In that case only check if
+	# resampling to 2mm is needed
 	if (len(affmat) == 0) and (len(warp) == 0):
 		# Get 3D voxel size
 		pixdim1=float(commands.getoutput('%sfslinfo %s | grep pixdim1 | awk \'{print $2}\'' % (fslDir,inFile) ))
 		pixdim2=float(commands.getoutput('%sfslinfo %s | grep pixdim2 | awk \'{print $2}\'' % (fslDir,inFile) ))
 		pixdim3=float(commands.getoutput('%sfslinfo %s | grep pixdim3 | awk \'{print $2}\'' % (fslDir,inFile) ))
 	
-		# If voxel size is not 2mm isotropic, resample the data, otherwise copy the file
+		# If voxel size is not 2mm isotropic, resample the data,
+		# otherwise copy the file
 		if (pixdim1 != 2) or (pixdim2 != 2) or (pixdim3 !=2 ):
 			os.system(' '.join([os.path.join(fslDir,'flirt'),
 				' -ref ' + ref,
@@ -155,7 +193,9 @@ def register2MNI(fslDir, inFile, outFile, affmat, warp):
 		else:
 			os.system('cp ' + inFile + ' ' + outFile)
 	
-	# If only a warp-file has been specified, assume that the data has already been registered to the structural scan. In that case apply the warping without a affmat
+	# If only a warp-file has been specified, assume that the data has
+	# already been registered to the structural scan. In that case
+	# apply the warping without a affmat
 	elif (len(affmat) == 0) and (len(warp) != 0):
 		# Apply warp
 		os.system(' '.join([os.path.join(fslDir,'applywarp'),
@@ -165,7 +205,8 @@ def register2MNI(fslDir, inFile, outFile, affmat, warp):
 			'--warp=' + warp,
 			'--interp=trilinear']))
 
-	# If only a affmat-file has been specified perform affine registration to MNI
+	# If only a affmat-file has been specified perform affine
+	# registration to MNI
 	elif (len(affmat) != 0) and (len(warp) == 0):
 		os.system(' '.join([os.path.join(fslDir,'flirt'),
 			'-ref ' + ref,
@@ -174,7 +215,8 @@ def register2MNI(fslDir, inFile, outFile, affmat, warp):
 			'-applyxfm -init ' + affmat,
 			'-interp trilinear']))
 
-	# If both a affmat- and warp-file have been defined, apply the warping accordingly
+	# If both a affmat- and warp-file have been defined, apply the
+	# warping accordingly
 	else:
 		os.system(' '.join([os.path.join(fslDir,'applywarp'),
 			'--ref=' + ref,
@@ -185,20 +227,25 @@ def register2MNI(fslDir, inFile, outFile, affmat, warp):
 			'--interp=trilinear']))
 
 def antsregister2MNI(fslDir, inFile, outFile, func2anat, affmat, warp):
-	""" This function registers an image (or time-series of images) to MNI152 T1 2mm. If no affmat is defined, it only warps (i.e. it assumes that the data has been registerd to the structural scan associated with the warp-file already). If no warp is defined either, it only resamples the data to 2mm isotropic if needed (i.e. it assumes that the data has been registered to a MNI152 template). In case only an affmat file is defined, it assumes that the data has to be linearly registered to MNI152 (i.e. the user has a reason not to use non-linear registration on the data).
+	"""Register an image to MNI space using ANTs.
 
 	Parameters
-	---------------------------------------------------------------------------------
+	---------------------------------------------------------------------------
 	fslDir:		Full path of the bin-directory of FSL
-	inFile:		Full path to the data file (nii.gz) which has to be registerd to MNI152 T1 2mm
+	inFile:		Full path to the data file (nii.gz) which has to be 
+                registerd to MNI152 T1 2mm
 	outFile:	Full path of the output file
-	affmat:		Full path of the mat file describing the linear registration (if data is still in native space)
-	warp:		Full path of the warp file describing the non-linear registration (if data has not been registered to MNI152 space yet)
+	affmat:		Full path of the mat file describing the linear registration
+                (if data is still in native space)
+	warp:		Full path of the warp file describing the non-linear 
+                registration (if data has not been registered to MNI152 
+                space yet)
 
 	Output (within the requested output directory)
-	---------------------------------------------------------------------------------
-	melodic_IC_mm_MNI2mm.nii.gz	merged file containing the mixture modeling thresholded Z-statistical maps registered to MNI152 2mm """
-
+	---------------------------------------------------------------------------
+	melodic_IC_mm_MNI2mm.nii.gz	merged file containing the mixture 
+       modeling thresholded Z-statistical maps registered to MNI152 2mm
+    """
 
 	# Import needed modules
 	import os
@@ -217,29 +264,37 @@ def antsregister2MNI(fslDir, inFile, outFile, func2anat, affmat, warp):
 
 
 def feature_time_series(melmix, mc):
-	""" This function extracts the maximum RP correlation feature scores. It determines the maximum robust correlation of each component time-series with a model of 72 realigment parameters.
+	"""Extract features related to time-series statistics.
+
+    This function extracts the maximum RP correlation feature
+    scores. It determines the maximum robust correlation of each
+    component time-series with a model of 72 realigment parameters.
 
 	Parameters
-	---------------------------------------------------------------------------------
+	---------------------------------------------------------------------------
 	melmix:		Full path of the melodic_mix text file
 	mc:		Full path of the text file containing the realignment parameters
 	
 	Returns
-	---------------------------------------------------------------------------------
-	maxRPcorr:	Array of the maximum RP correlation feature scores for the components of the melodic_mix file"""
+	---------------------------------------------------------------------------
+	maxRPcorr:	Array of the maximum RP correlation feature scores for
+        the components of the melodic_mix file
+    """
 
 	# Import required modules
 	import numpy as np
 	import random
 
-	# Read melodic mix file (IC time-series), subsequently define a set of squared time-series
+	# Read melodic mix file (IC time-series), subsequently define a
+	# set of squared time-series
 	mix = np.loadtxt(melmix)
 	mixsq = np.power(mix,2)
 
 	# Read motion parameter file
 	RP6 = np.loadtxt(mc)
 
-	# Determine the derivatives of the RPs (add zeros at time-point zero)
+	# Determine the derivatives of the RPs (add zeros at time-point
+	# zero)
 	RP6_der = np.array(RP6[range(1,RP6.shape[0]),:] - RP6[range(0,RP6.shape[0]-1),:])
 	RP6_der = np.concatenate((np.zeros((1,6)),RP6_der),axis=0)
 
@@ -249,14 +304,19 @@ def feature_time_series(melmix, mc):
 	# Add the squared RP-terms to the model
 	RP24 = np.concatenate((RP12,np.power(RP12,2)),axis=1)
 
-	# Derive shifted versions of the RP_model (1 frame for and backwards)
-	RP24_1fw = np.concatenate((np.zeros((1,24)),np.array(RP24[range(0,RP24.shape[0]-1),:])),axis=0)
-	RP24_1bw = np.concatenate((np.array(RP24[range(1,RP24.shape[0]),:]),np.zeros((1,24))),axis=0)
+	# Derive shifted versions of the RP_model (1 frame for and
+	# backwards)
+	RP24_1fw = np.concatenate((np.zeros((1,24)),
+                               np.array(RP24[range(0,RP24.shape[0]-1),:])),
+                              axis=0)
+	RP24_1bw = np.concatenate((np.array(RP24[range(1,RP24.shape[0]),:]),
+                               np.zeros((1,24))), axis=0)
 
 	# Combine the original and shifted mot_pars into a single model
 	RP_model = np.concatenate((RP24,RP24_1fw,RP24_1bw),axis=1)
 
-	# Define the column indices of respectively the squared or non-squared terms
+	# Define the column indices of respectively the squared or
+	# non-squared terms
 	idx_nonsq = np.array(np.concatenate((range(0,12), range(24,36), range(48,60)),axis=0))
 	idx_sq = np.array(np.concatenate((range(12,24), range(36,48), range(60,72)),axis=0))
 
@@ -264,15 +324,18 @@ def feature_time_series(melmix, mc):
 	nSplits=int(1000)
 	maxTC = np.zeros((nSplits,mix.shape[1]))
 	for i in range(0,nSplits):
-		# Get a random set of 90% of the dataset and get associated RP model and IC time-series matrices
-		idx = np.array(random.sample(range(0,mix.shape[0]),int(round(0.9*mix.shape[0]))))
+		# Get a random set of 90% of the dataset and get associated RP
+		# model and IC time-series matrices
+		idx = np.array(random.sample(range(0,mix.shape[0]),
+                                     int(round(0.9*mix.shape[0]))))
 		RP_model_temp = RP_model[idx,:]
 		mix_temp = mix[idx,:]
 		mixsq_temp = mixsq[idx,:]
 
 		# Calculate correlation between non-squared RP/IC time-series
 		RP_model_nonsq = RP_model_temp[:,idx_nonsq]
-		cor_nonsq = np.array(np.zeros((mix_temp.shape[1],RP_model_nonsq.shape[1])))
+		cor_nonsq = np.array(np.zeros((mix_temp.shape[1],
+                                       RP_model_nonsq.shape[1])))
 		for j in range(0,mix_temp.shape[1]):
 			for k in range(0,RP_model_nonsq.shape[1]):
 				cor_temp = np.corrcoef(mix_temp[:,j],RP_model_nonsq[:,k])
@@ -300,16 +363,22 @@ def feature_time_series(melmix, mc):
 	return maxRPcorr
 
 def feature_frequency(melFTmix, TR):
-	""" This function extracts the high-frequency content feature scores. It determines the frequency, as fraction of the Nyquist frequency, at which the higher and lower frequencies explain half of the total power between 0.01Hz and Nyquist. 
+	"""Extract high-frequency context feature scores.
+
+    Determines the frequency, as fraction of the Nyquist frequency, at
+    which the higher and lower frequencies explain half of the total
+    power between 0.01Hz and Nyquist.
 	
 	Parameters
-	---------------------------------------------------------------------------------
+	---------------------------------------------------------------------------
 	melFTmix:	Full path of the melodic_FTmix text file
-	TR:		TR (in seconds) of the fMRI data (float)
+	TR:		    TR (in seconds) of the fMRI data (float)
 	
 	Returns
-	---------------------------------------------------------------------------------
-	HFC:		Array of the HFC ('High-frequency content') feature scores for the components of the melodic_FTmix file"""
+	---------------------------------------------------------------------------
+	HFC:		Array of the HFC ('High-frequency content') feature scores
+        for the components of the melodic_FTmix file
+    """
 
 	# Import required modules
 	import numpy as np
@@ -323,7 +392,8 @@ def feature_frequency(melFTmix, TR):
 	# Load melodic_FTmix file
 	FT=np.loadtxt(melFTmix)
 
-	# Determine which frequencies are associated with every row in the melodic_FTmix file  (assuming the rows range from 0Hz to Nyquist)
+	# Determine which frequencies are associated with every row in the
+	# melodic_FTmix file (assuming the rows range from 0Hz to Nyquist)
 	f = Ny*(np.array(range(1,FT.shape[0]+1)))/(FT.shape[0])
 
 	# Only include frequencies higher than 0.01Hz
@@ -334,32 +404,47 @@ def feature_frequency(melFTmix, TR):
 	# Set frequency range to [0-1]
 	f_norm = (f-0.01)/(Ny-0.01)
 
-	# For every IC; get the cumulative sum as a fraction of the total sum
+	# For every IC; get the cumulative sum as a fraction of the total
+	# sum
 	fcumsum_fract = np.cumsum(FT,axis=0)/ np.sum(FT,axis=0)
 
-	# Determine the index of the frequency with the fractional cumulative sum closest to 0.5
+	# Determine the index of the frequency with the fractional
+	# cumulative sum closest to 0.5
 	idx_cutoff=np.argmin(np.abs(fcumsum_fract-0.5),axis=0)
 
-	# Now get the fractions associated with those indices index, these are the final feature scores
+	# Now get the fractions associated with those indices index, these
+	# are the final feature scores
 	HFC = f_norm[idx_cutoff]
 		 
 	# Return feature score
 	return HFC
 
 def feature_spatial(fslDir, tempDir, aromaDir, melIC):
-	""" This function extracts the spatial feature scores. For each IC it determines the fraction of the mixture modeled thresholded Z-maps respecitvely located within the CSF or at the brain edges, using predefined standardized masks.
+	"""Extract spatial feature scores.
+
+    For each IC, determines the fraction of the mixture modeled
+    thresholded Z-maps respecitvely located within the CSF or at the
+    brain edges, using predefined standardized masks.
 
 	Parameters
-	---------------------------------------------------------------------------------
+	---------------------------------------------------------------------------
 	fslDir:		Full path of the bin-directory of FSL
-	tempDir:	Full path of a directory where temporary files can be stored (called 'temp_IC.nii.gz')
-	aromaDir:	Full path of the ICA-AROMA directory, containing the mask-files (mask_edge.nii.gz, mask_csf.nii.gz & mask_out.nii.gz) 
-	melIC:		Full path of the nii.gz file containing mixture-modeled threholded (p>0.5) Z-maps, registered to the MNI152 2mm template
+	tempDir:	Full path of a directory where temporary files can be 
+                stored (called 'temp_IC.nii.gz')
+	aromaDir:	Full path of the ICA-AROMA directory, containing the 
+                mask-files (mask_edge.nii.gz, mask_csf.nii.gz & 
+                mask_out.nii.gz) 
+	melIC:		Full path of the nii.gz file containing mixture-modeled
+                threholded (p>0.5) Z-maps, registered to the MNI152
+                2mm template
 	
 	Returns
-	---------------------------------------------------------------------------------
-	edgeFract:	Array of the edge fraction feature scores for the components of the melIC file
-	csfFract:	Array of the CSF fraction feature scores for the components of the melIC file"""
+	---------------------------------------------------------------------------
+	edgeFract:	Array of the edge fraction feature scores for the
+        components of the melIC file
+	csfFract:	Array of the CSF fraction feature scores for the components
+         of the melIC file
+    """
 
 	# Import required modules
 	import numpy as np
@@ -389,7 +474,8 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 			'-abs',
 			tempIC]))
 		
-		# Get sum of Z-values within the total Z-map (calculate via the mean and number of non-zero voxels)
+		# Get sum of Z-values within the total Z-map (calculate via
+		# the mean and number of non-zero voxels)
 		totVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
 							'-V | awk \'{print $1}\''])))
@@ -404,7 +490,8 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 
 		totSum = totMean * totVox
 		
-		# Get sum of Z-values of the voxels located within the CSF (calculate via the mean and number of non-zero voxels)
+		# Get sum of Z-values of the voxels located within the CSF
+		# (calculate via the mean and number of non-zero voxels)
 		csfVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
 							'-k ' + os.path.join(aromaDir, 'mask_csf.nii.gz'),
@@ -420,7 +507,8 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 
 		csfSum = csfMean * csfVox	
 
-		# Get sum of Z-values of the voxels located within the Edge (calculate via the mean and number of non-zero voxels)
+		# Get sum of Z-values of the voxels located within the Edge
+		# (calculate via the mean and number of non-zero voxels)
 		edgeVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
                                                         '-k ' + os.path.join(aromaDir, 'mask_edge.nii.gz'),
@@ -435,7 +523,8 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 		
 		edgeSum = edgeMean * edgeVox
 
-		# Get sum of Z-values of the voxels located outside the brain (calculate via the mean and number of non-zero voxels)
+		# Get sum of Z-values of the voxels located outside the brain
+		# (calculate via the mean and number of non-zero voxels)
 		outVox = int(commands.getoutput(' '.join([os.path.join(fslDir,'fslstats'),
 							tempIC,
                                                         '-k ' + os.path.join(aromaDir, 'mask_edge.nii.gz'),
@@ -465,23 +554,33 @@ def feature_spatial(fslDir, tempDir, aromaDir, melIC):
 	return edgeFract, csfFract
 
 def classification(outDir, maxRPcorr, edgeFract, HFC, csfFract):
-	""" This function classifies a set of components into motion and non-motion components based on four features; maximum RP correlation, high-frequency content, edge-fraction and CSF-fraction
+	"""Classify components based on different features.
+
+    This function classifies a set of components into motion and
+    non-motion components based on four features; maximum RP
+    correlation, high-frequency content, edge-fraction and
+    CSF-fraction.
 
 	Parameters
-	---------------------------------------------------------------------------------
+	---------------------------------------------------------------------------
 	outDir:		Full path of the output directory
-	maxRPcorr:	Array of the 'maximum RP correlation' feature scores of the components
+	maxRPcorr:	Array of the 'maximum RP correlation' feature scores of
+                the components
 	edgeFract:	Array of the 'edge fraction' feature scores of the components
-	HFC:		Array of the 'high-frequency content' feature scores of the components
+	HFC:		Array of the 'high-frequency content' feature scores of the
+                 components
 	csfFract:	Array of the 'CSF fraction' feature scores of the components
 
 	Return
-	---------------------------------------------------------------------------------
-	motionICs	Array containing the indices of the components identified as motion components
+	---------------------------------------------------------------------------
+	motionICs	Array containing the indices of the components identified 
+                as motion components
 
 	Output (within the requested output directory)
-	---------------------------------------------------------------------------------
-	classified_motion_ICs.txt	A text file containing the indices of the components identified as motion components """
+	---------------------------------------------------------------------------
+	classified_motion_ICs.txt	A text file containing the indices of 
+                the components identified as motion components
+    """
 
 	# Import required modules
 	import numpy as np
@@ -490,7 +589,8 @@ def classification(outDir, maxRPcorr, edgeFract, HFC, csfFract):
 
 	# Classify the ICs as motion or non-motion
 
-	# Define criteria needed for classification (thresholds and hyperplane-parameters)
+	# Define criteria needed for classification (thresholds and
+	# hyperplane-parameters)
 	thr_csf = 0.10
 	thr_HFC = 0.35
 	hyp = np.array([-19.9751070082159, 9.95127547670627, 24.8333160239175])
@@ -526,33 +626,43 @@ def classification(outDir, maxRPcorr, edgeFract, HFC, csfFract):
 	return motionICs
 
 def denoising(fslDir, inFile, outDir, melmix, denType, denIdx):
-	""" This function classifies the ICs based on the four features; maximum RP correlation, high-frequency content, edge-fraction and CSF-fraction
+	"""Run denoising of timeseries data.
+    
+    This function classifies the ICs based on the four features;
+    maximum RP correlation, high-frequency content, edge-fraction and
+    CSF-fraction
 
 	Parameters
-	---------------------------------------------------------------------------------
+	---------------------------------------------------------------------------
 	fslDir:		Full path of the bin-directory of FSL
 	inFile:		Full path to the data file (nii.gz) which has to be denoised
 	outDir:		Full path of the output directory
 	melmix:		Full path of the melodic_mix text file
-	denType:	Type of requested denoising ('aggr': aggressive, 'nonaggr': non-aggressive, 'both': both aggressive and non-aggressive 
+	denType:	Type of requested denoising 
+                ('aggr': aggressive, 'nonaggr': non-aggressive,
+                 'both': both aggressive and non-aggressive)
 	denIdx:		Indices of the components that should be regressed out
 
 	Output (within the requested output directory)
-	---------------------------------------------------------------------------------
-	denoised_func_data_<denType>.nii.gz:		A nii.gz file of the denoised fMRI data"""
+	---------------------------------------------------------------------------
+	denoised_func_data_<denType>.nii.gz:		A nii.gz file of the
+                denoised fMRI data
+    """
 
 	# Import required modules
 	import os
 	import numpy as np
 
-	# Check if denoising is needed (i.e. are there components classified as motion)
+	# Check if denoising is needed (i.e. are there components
+	# classified as motion)
 	check = len(denIdx) > 0
 
 	if check==1:
 		# Put IC indices into a char array
 		denIdxStr = np.char.mod('%i',(denIdx+1))
 
-		# Non-aggressive denoising of the data using fsl_regfilt (partial regression), if requested
+		# Non-aggressive denoising of the data using fsl_regfilt
+		# (partial regression), if requested
 		if (denType == 'nonaggr') or (denType == 'both'):		
 			os.system(' '.join([os.path.join(fslDir,'fsl_regfilt'),
 				'--in=' + inFile,
@@ -560,7 +670,8 @@ def denoising(fslDir, inFile, outDir, melmix, denType, denIdx):
 				'--filter="' + ','.join(denIdxStr) + '"',
 				'--out=' + os.path.join(outDir,'denoised_func_data_nonaggr.nii.gz')]))
 
-		# Aggressive denoising of the data using fsl_regfilt (full regression)
+		# Aggressive denoising of the data using fsl_regfilt (full
+		# regression)
 		if (denType == 'aggr') or (denType == 'both'):
 			os.system(' '.join([os.path.join(fslDir,'fsl_regfilt'),
 				'--in=' + inFile,
