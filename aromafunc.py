@@ -430,15 +430,23 @@ def mask_sum(fslDir, image, mask_file=None):
     # the mean and number of non-zero voxels)
     fslstats = os.path.join(fslDir, 'fslstats')
     if mask_file is not None:
-        mask_vox = int(commands.getoutput(' '.join([fslstats,
-                                                    image, '-k ' + mask_file, '-V | awk \'{print $1}\''])))
+        # Number of nonzero voxels within mask
+        mask_vox = int(commands.getoutput(' '.join([fslstats, image,
+            '-k ' + mask_file, '-V | awk \'{print $1}\''])))
     else:
-        mask_vox = int(commands.getoutput(' '.join([fslstats,
-                                                    image, '-V | awk \'{print $1}\''])))
+        # All nonzero voxels
+        mask_vox = int(commands.getoutput(' '.join([fslstats, image,
+            '-V | awk \'{print $1}\''])))
         
     if mask_vox > 0:
-        mask_mean = float(commands.getoutput(' '.join([fslstats,
-                                                       image, '-M'])))
+        if mask_file is not None:
+            # Mean of nonzero voxels within mask
+            mask_mean = float(commands.getoutput(' '.join([fslstats, image,
+                '-k ' + mask_file, '-M'])))
+        else:
+            # Mean of all nonzero voxels
+            mask_mean = float(commands.getoutput(' '.join([fslstats, image,
+                '-M'])))
     else:
         mask_mean = 0
     return mask_vox * mask_mean
