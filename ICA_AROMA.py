@@ -218,7 +218,7 @@ melFTmix = os.path.join(outDir,'melodic.ica','melodic_FTmix')
 HFC = aromafunc.feature_frequency(melFTmix, TR)
 
 print '  - classification'
-motionICs = aromafunc.classification(outDir, maxRPcorr, edgeFract, HFC, csfFract)
+motionICs = aromafunc.classification(outDir, maxRPcorr-.1, edgeFract-.1, HFC, csfFract)
 
 if (denType != 'no'):
 	print 'Step 3) Data denoising'
