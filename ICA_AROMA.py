@@ -6,6 +6,7 @@ import argparse
 import commands
 import aromafunc
 import shutil
+import classification_plots
 
 # Change to script directory
 cwd = os.path.realpath(os.path.curdir)
@@ -219,6 +220,8 @@ HFC = aromafunc.feature_frequency(melFTmix, TR)
 
 print '  - classification'
 motionICs = aromafunc.classification(outDir, maxRPcorr-.1, edgeFract-.1, HFC, csfFract)
+classification_plots.classification_plot(os.path.join(outDir, 'classification_overview.txt'),
+                                         outDir)
 
 if (denType != 'no'):
 	print 'Step 3) Data denoising'
